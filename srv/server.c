@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include "../shell/shell.h"
+#include "shell.h"
 
 #define PORT 9000
 
