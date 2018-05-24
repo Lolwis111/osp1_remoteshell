@@ -11,21 +11,53 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+#include <signal.h>
+
 #include <pthread.h>
 
 #include "client.h"
 #include "file.h"
 
-#define PORT 9000
+#define PORT 9001
 #define HOST "127.0.0.1"
 #define BUFFER_SIZE 512
 
-void inline CustomSleep()
+bool _fileTransferMode = false;
+
+void* readingThread(void* arg)
+{
+    int socket = *((int*)arg);
+    char buffer[BUFFER_SIZE];
+    ssize_t bytes;
+
+    while(1)
+    {
+        if(!_fileTransferMode)
+        {
+            /* read back the response */
+            do
+            {
+                if((bytes = read(socket, buffer, BUFFER_SIZE - 1)) > 0)
+                {
+                    buffer[bytes] = 0x00;
+                    printf("%s", buffer);
+                }
+            }
+            /* when the buffer wasnt fully used, 
+            * it means everything is transmitted */
+            while(bytes == BUFFER_SIZE - 1);
+        }
+    }
+
+    return NULL;
+}
+
+void inline CustomSleep(int ms)
 {
     /* sleeps for 250ms */
     struct timespec tim, tim2;
     tim.tv_sec = 0;
-    tim.tv_nsec = 250000000L; 
+    tim.tv_nsec = ms * 1000000L; 
     nanosleep(&tim , &tim2);
 }
 
@@ -57,7 +89,6 @@ char *strtrim(char* str)
 
     return str;
 }
-
 
 int main(int argc, char **argv)
 {
@@ -103,24 +134,30 @@ int main(int argc, char **argv)
         
         exit(EXIT_FAILURE);
     }
-    
+
     /* wait a moment to allow for TCP magic */
-    CustomSleep();
-
-    ssize_t bytes;
-    char buffer[BUFFER_SIZE];
-
-    /* we start by reading to get the prompt */
-    if((bytes = read(socketFD, buffer, BUFFER_SIZE-1)) > 0)
+    CustomSleep(250);
+    
+    pthread_t thread;
+    int result;
+    if((result = pthread_create(&thread, NULL, readingThread, (void*)&socketFD)) != 0)
     {
-        /* put a \0 byte at the end of the transmission
-         * to avoid printing fragments of old buffers */
-        buffer[bytes] = '\0';
-        printf("%s", buffer);
+        fprintf(stderr, "Could not spawn thread: %d\n", result);
+        shutdown(socketFD, SHUT_RDWR);
+        close(socketFD);
+        exit(EXIT_FAILURE);
     }
+
+    CustomSleep(250);
+
+    char newline = '\n';
+    write(socketFD, &newline, 1);
+
+    char buffer[BUFFER_SIZE];
 
     while(1)
     {
+        memset(&buffer, 0, BUFFER_SIZE);
         /* read a command from the user */
         fgets(buffer, BUFFER_SIZE, stdin);
 
@@ -138,34 +175,25 @@ int main(int argc, char **argv)
         }
         else if(strncmp(buffer, "put", 3) == 0)
         {
+            _fileTransferMode = true;
             if(!sendFile(strtrim(buffer+3), socketFD))
             {
                 fputs("Error sending file!", stderr);
             }
+            _fileTransferMode = false;
         }
         else if(strncmp(buffer, "get", 3) == 0)
         {
+            _fileTransferMode = true;
             if(!recieveFile(strtrim(buffer+3), socketFD))
             {
                 fputs("Error recieving file!", stderr);
             }
+            _fileTransferMode = false;
         }
 
         /* wait a moment to allow TCP to do some magic */
-        CustomSleep();
-
-        /* read back the response */
-        do
-        {
-            if((bytes = read(socketFD, buffer, BUFFER_SIZE - 1)) > 0)
-            {
-                buffer[bytes] = 0x00;
-                printf("%s", buffer);
-            }
-        }
-        /* when the buffer wasnt fully used, 
-         * it means everything is transmitted */
-        while(bytes == BUFFER_SIZE - 1);
+        CustomSleep(250);
     }
     
     close(socketFD);

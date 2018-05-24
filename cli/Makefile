@@ -11,7 +11,7 @@ OBJ = $(SRC:%.c=%.o)
 	$(CC) $(CFLAGS) $< -o $@
 
 client: $(OBJ)
-	$(CC) $^ -o $@
+	$(CC) $^ -lpthread -o $@
 
 all: $(TAR)
 

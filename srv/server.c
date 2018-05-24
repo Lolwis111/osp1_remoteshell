@@ -8,13 +8,29 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "shell.h"
 
-#define PORT 9000
+#define PORT 9001
+
+int _socket = -1;
+
+void ctrlCHandler(int sig)
+{
+    if(sig == SIGINT && _socket != -1)
+    {
+        shutdown(_socket, SHUT_RDWR);
+        close(_socket);
+
+        exit(EXIT_SUCCESS);
+    }
+}
 
 int main()
 {
+    signal(SIGINT, ctrlCHandler);
+
     /* this struct describes the connection */
 	struct sockaddr_in sa = {
         .sin_family = AF_INET,
@@ -23,7 +39,7 @@ int main()
     };
     
     /* get a socket from the operating system */
-    int socketFD = socket(AF_INET, SOCK_STREAM, 0);
+    int socketFD = _socket = socket(AF_INET, SOCK_STREAM, 0);
     
     /* did that work? */
     if(-1 == socketFD) 
@@ -69,6 +85,7 @@ int main()
         /* fork into the shell so the server can accept more connections */
         if((child = fork()) == 0)
         {
+            int debug = dup(STDERR_FILENO);
             /* map the socket onto the output streams */
             dup2(connectFD, STDOUT_FILENO);
             dup2(connectFD, STDERR_FILENO);
@@ -78,7 +95,7 @@ int main()
             setbuf(stderr, NULL);
 
             /* execute the shell */
-            shell(connectFD);
+            shell(connectFD, debug);
 
             /* close the connection */
             shutdown(connectFD, SHUT_RDWR);

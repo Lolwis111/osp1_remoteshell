@@ -12,23 +12,10 @@
 #include "shell.h"
 #include "file.h"
 
-/* indicates if ctrl+c was hit 
- * marked as volatile as the value
- * gets updated in async interupts. */
-volatile bool abortWait = false;
 /* save the original handler for ctrl+c */
 void (*handler)(int);
 pid_t processes[MAX_PROCESSES]; /* keeps track of our processes */
 size_t processCount = 0;        /* counts how many processes are running in the background */
-
-void ctrlCHandler(int signo)
-{
-    /* if the user hit ctrl+c, we note that down */
-    if(SIGINT == signo)
-    {
-        abortWait = true;
-    }
-}
 
 /* checks if the given id is child of this shell */
 bool isProcess(pid_t id)
@@ -126,12 +113,13 @@ void waitForPIDs(pid_t* pids, size_t argc)
     }
 
     /* reset Ctrl+C */
-    abortWait = false;
+    // abortWait = false;
 
     /* iterate through all the given pids until they all terminated */
     /* if the SIGINT handler registerd Ctrl+C we can return too */
     size_t i = 0;
-    while(!abortWait)
+    // while(!abortWait)
+    while(1)
     {
         /* -1 marks available slots, we dont have to wait on these */
         if(-1 != pids[i])
@@ -276,7 +264,7 @@ void launchProgramWithPipe(command_t* command)
     {
         /* background processes should ingore Ctrl+C,
            everyone else gets the default handler  */
-        signal(SIGINT, command->background ? SIG_IGN : handler);
+        // signal(SIGINT, command->background ? SIG_IGN : handler);
 
         /* start up a pipe and check if that worked */
         int pipefds[2];
@@ -367,7 +355,7 @@ void launchProgram(command_t* command)
     { 
         /* background processes should ingore Ctrl+C,
            everyone else gets the default handler  */
-        signal(SIGINT, command->background ? SIG_IGN : handler);
+        // signal(SIGINT, command->background ? SIG_IGN : handler);
 
         execvp(command->programs[0].args[0], command->programs[0].args);
 
@@ -519,12 +507,12 @@ bool parseCommand(char* commandStr, command_t *command)
     return true;
 }
 
-int shell(int socket)
+int shell(int socket, int debugFD)
 {
     /* install a new handler for Ctrl+C 
        but also save the old handler 
        for background children */
-    handler = signal(SIGINT, ctrlCHandler);
+    // handler = signal(SIGINT, ctrlCHandler);
 
     /* set all process ids to zero
        zero indicates that the slot is available */
@@ -542,7 +530,7 @@ int shell(int socket)
         if(NULL == cwd)
         {
             fprintf(stderr, "%s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            return 0;
         }
 
         /* get the working directory for our process */
@@ -550,24 +538,21 @@ int shell(int socket)
         {
             free(cwd);
             fprintf(stderr, "%s\n", strerror(errno));
-            exit(EXIT_FAILURE);
+            return 1;
         }
 
         /* print a prompt */
-        printf("%s /> ", basename(cwd));
+        fprintf(stdout, "%s /> ", basename(cwd));
         free(cwd);
 
-        /* (try) to read a command from the user */
-        // if(NULL == fgets(inputBuffer, INPUT_BUFFER_LENGTH, stdin))
         if(read(socket, inputBuffer, INPUT_BUFFER_LENGTH) <= 0)
         {
             /* this indicates that EOF was entered
                bash exits on EOF so we do too */
-            // putc('\n', stdout);
-            exit(EXIT_SUCCESS);
+            return 0;
         }
 
-        // fprintf(stderr, "%s\n", inputBuffer);
+        write(debugFD, inputBuffer, strlen(inputBuffer));
 
         /* delete the trailing newline character that fgets inserted */
         inputBuffer[strlen(inputBuffer) - 1] = 0x00;
@@ -584,7 +569,7 @@ int shell(int socket)
         if(!parseCommand(input, &command))
         {
             freeCommand(&command);
-            exit(EXIT_FAILURE);
+            return 1;
         }
 
         if(command.count == 1)
@@ -595,7 +580,7 @@ int shell(int socket)
                 /* wait for all background processes to finish */
                 killall();
                 freeCommand(&command);
-                exit(EXIT_SUCCESS);
+                return 0;
             }
             else if(0 == strcmp(command.programs[0].args[0], "put"))
             {
@@ -694,7 +679,6 @@ int shell(int socket)
         else if(command.count == 2)
         {
             launchProgramWithPipe(&command);
-            // free(command.programs);
         }
         else
         {
