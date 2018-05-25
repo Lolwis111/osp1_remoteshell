@@ -18,7 +18,7 @@
 #include "client.h"
 #include "file.h"
 
-#define PORT 9001
+#define PORT 9000
 #define HOST "127.0.0.1"
 #define BUFFER_SIZE 512
 
@@ -32,6 +32,8 @@ void* readingThread(void* arg)
 
     while(1)
     {
+        /* file transmissions have to be synchronized
+         * to avoid printing file data onto the terminal */ 
         if(!_fileTransferMode)
         {
             /* read back the response */
@@ -47,6 +49,10 @@ void* readingThread(void* arg)
             * it means everything is transmitted */
             while(bytes == BUFFER_SIZE - 1);
         }
+        else
+        {
+            CustomSleep(250);
+        }
     }
 
     return NULL;
@@ -54,10 +60,9 @@ void* readingThread(void* arg)
 
 void inline CustomSleep(int ms)
 {
-    /* sleeps for 250ms */
     struct timespec tim, tim2;
     tim.tv_sec = 0;
-    tim.tv_nsec = ms * 1000000L; 
+    tim.tv_nsec = ms * 1000000L; /* convert milliseconds into nanseconds */
     nanosleep(&tim , &tim2);
 }
 
@@ -138,6 +143,7 @@ int main(int argc, char **argv)
     /* wait a moment to allow for TCP magic */
     CustomSleep(250);
     
+    /* create a thread to read asynchronus all the time */
     pthread_t thread;
     int result;
     if((result = pthread_create(&thread, NULL, readingThread, (void*)&socketFD)) != 0)
@@ -150,13 +156,11 @@ int main(int argc, char **argv)
 
     CustomSleep(250);
 
-    char newline = '\n';
-    write(socketFD, &newline, 1);
-
     char buffer[BUFFER_SIZE];
 
     while(1)
     {
+        /* reset the buffer */
         memset(&buffer, 0, BUFFER_SIZE);
         /* read a command from the user */
         fgets(buffer, BUFFER_SIZE, stdin);
@@ -170,16 +174,21 @@ int main(int argc, char **argv)
         /* if we entered exit we can stop */
         if(strncmp(buffer, "exit", 4) == 0)
         {
+            /* on exit, the client can end the connection and exit*/
             shutdown(socketFD, SHUT_RDWR);
+            close(socketFD);
             exit(EXIT_SUCCESS);
         }
         else if(strncmp(buffer, "put", 3) == 0)
         {
+            /* disable the thread for a moment */
             _fileTransferMode = true;
+            /* send the file */
             if(!sendFile(strtrim(buffer+3), socketFD))
             {
                 fputs("Error sending file!", stderr);
             }
+            /* reenable the thread */
             _fileTransferMode = false;
         }
         else if(strncmp(buffer, "get", 3) == 0)

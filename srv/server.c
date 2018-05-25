@@ -12,14 +12,16 @@
 
 #include "shell.h"
 
-#define PORT 9001
+#define PORT 9000
 
 int _socket = -1;
 
 void ctrlCHandler(int sig)
 {
+    /* on Ctrl+C */
     if(sig == SIGINT && _socket != -1)
     {
+        /* shutdown the connection and close the socket */
         shutdown(_socket, SHUT_RDWR);
         close(_socket);
 
@@ -85,6 +87,8 @@ int main()
         /* fork into the shell so the server can accept more connections */
         if((child = fork()) == 0)
         {
+            /* copy the stderr stream before remapping it,
+             * to allow the server to make debug printouts */
             int debug = dup(STDERR_FILENO);
             /* map the socket onto the output streams */
             dup2(connectFD, STDOUT_FILENO);
@@ -103,6 +107,7 @@ int main()
         }
         else
         {
+            /* the parent can close this socket now */
             close(connectFD);
         }
     }
