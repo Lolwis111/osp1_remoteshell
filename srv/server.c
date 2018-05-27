@@ -97,7 +97,7 @@ int main()
             /* disable buffering */
             setbuf(stdout, NULL);
             setbuf(stderr, NULL);
-
+            
             /* execute the shell */
             shell(connectFD, debug);
 

@@ -262,13 +262,9 @@ void launchProgramWithPipe(command_t* command)
     }
     else if(process1 == 0) /* fork once for the first program */
     {
-        /* background processes should ingore Ctrl+C,
-           everyone else gets the default handler  */
-        // signal(SIGINT, command->background ? SIG_IGN : handler);
-
         /* start up a pipe and check if that worked */
         int pipefds[2];
-        if(0 > pipe(pipefds))
+        if(pipe(pipefds) < 0)
         {
             fprintf(stderr, "%s\n", strerror(errno));
             fflush(stderr);
@@ -353,10 +349,6 @@ void launchProgram(command_t* command)
     /* the child has to execute the requested program */
     else if (process == 0)
     { 
-        /* background processes should ingore Ctrl+C,
-           everyone else gets the default handler  */
-        // signal(SIGINT, command->background ? SIG_IGN : handler);
-
         execvp(command->programs[0].args[0], command->programs[0].args);
 
         /* did an error occur? */
@@ -592,7 +584,7 @@ int shell(int socket, int debugFD)
                 {
                     if(!recieveFile(command.programs[0].args[1], socket))
                     {
-                        fputs("Error recieving file", stdout);
+                        fputs("Error recieving file", stderr);
                     }
                 }
             }
@@ -606,7 +598,7 @@ int shell(int socket, int debugFD)
                 {
                     if(!sendFile(command.programs[0].args[1], socket))
                     {
-                        fputs("Error sending file", stdout);
+                        fputs("Error sending file", stderr);
                     }
                 }
             }
