@@ -14,7 +14,7 @@ off_t getFileSize(char* filename)
 bool recieveFile(char* filename, int socket)
 {
     /* read the filesize */
-    size_t length, ret;
+    size_t length;
     if(read(socket, &length, sizeof(size_t)) < 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
@@ -34,6 +34,7 @@ bool recieveFile(char* filename, int socket)
     }
 
     char buffer[512];
+    size_t ret;
 
     for(size_t i = 0; i < segments; i++)
     {
@@ -77,7 +78,6 @@ bool recieveFile(char* filename, int socket)
 bool sendFile(char* filename, int socket)
 {
     off_t size = getFileSize(filename);
-    size_t ret;
     if(size == -1)
     {
         fprintf(stderr, "%s\n", strerror(errno));
@@ -88,7 +88,7 @@ bool sendFile(char* filename, int socket)
     size_t length = (size_t)size;
 
     /* send the filesize */
-    if(write(STDOUT_FILENO, &length, sizeof(size_t)) < 0)
+    if(write(socket, &length, sizeof(size_t)) < 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return false;
@@ -107,6 +107,7 @@ bool sendFile(char* filename, int socket)
     /* which means, there is a non 512-byte block of size rest */
     size_t rest = length % 512;
     char buffer[512];
+    size_t ret;
 
     for(size_t i = 0; i < segments; i++)
     {
@@ -119,7 +120,7 @@ bool sendFile(char* filename, int socket)
         }
 
         /* and send it */
-        if(write(STDOUT_FILENO, buffer, 512) < 0)
+        if(write(socket, buffer, 512) < 0)
         {
             fprintf(stderr, "%s\n", strerror(errno));
             return false;
@@ -135,7 +136,7 @@ bool sendFile(char* filename, int socket)
     }
     
     /* send the rest block */
-    if(write(STDOUT_FILENO, buffer, rest) < 0)
+    if(write(socket, buffer, rest) < 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return false;

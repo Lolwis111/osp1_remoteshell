@@ -498,7 +498,7 @@ bool parseCommand(char* commandStr, command_t *command)
     return true;
 }
 
-int shell(int socket, int debugFD)
+int shell(int socket)
 {
     /* set all process ids to zero
        zero indicates that the slot is available */
@@ -537,12 +537,6 @@ int shell(int socket, int debugFD)
             /* this indicates that EOF was entered
                bash exits on EOF so we do too */
             return 0;
-        }
-
-        /* print the recieved command to stderr for debug purposes */
-        if(write(debugFD, inputBuffer, strlen(inputBuffer)) < 0)
-        {
-            /* debug printout failure, what am i supposed to do know */
         }
 
         /* delete the trailing newline character that fgets inserted */

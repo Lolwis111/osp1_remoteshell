@@ -1,7 +1,7 @@
 #ifndef _SHELL_H_
 #define _SHELL_H_
 
-int shell(int socket, int debugFD);
+int shell(int socket);
 
 #define INPUT_BUFFER_LENGTH 512 /* allow the user 512 characters of command */
 #define MAX_PROCESSES 8 /* allow 8 background processes */

@@ -6,7 +6,7 @@
 TAR = cli/client srv/server
 PCK = lab-3.zip
 
-export CFLAGS = -std=gnu11 -c -g -Os -Wall -Werror -Wpedantic
+export CFLAGS = -std=gnu11 -c -g -Os -Wall -Werror
 
 all: $(TAR)
 

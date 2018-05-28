@@ -88,7 +88,7 @@ bool sendFile(char* filename, int socket)
     size_t length = (size_t)size;
 
     /* send the filesize */
-    if(write(STDOUT_FILENO, &length, sizeof(size_t)) < 0)
+    if(write(socket, &length, sizeof(size_t)) < 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return false;
@@ -119,7 +119,7 @@ bool sendFile(char* filename, int socket)
         }
 
         /* and send it */
-        if(write(STDOUT_FILENO, buffer, 512) < 0)
+        if(write(socket, buffer, 512) < 0)
         {
             fprintf(stderr, "%s\n", strerror(errno));
             return false;
@@ -135,7 +135,7 @@ bool sendFile(char* filename, int socket)
     }
     
     /* send the rest block */
-    if(write(STDOUT_FILENO, buffer, rest) < 0)
+    if(write(socket, buffer, rest) < 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return false;

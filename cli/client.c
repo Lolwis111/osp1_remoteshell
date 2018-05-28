@@ -22,7 +22,7 @@
 #define HOST "127.0.0.1"
 #define BUFFER_SIZE 512
 
-bool _fileTransferMode = false;
+volatile bool _fileTransferMode = false;
 
 void* readingThread(void* arg)
 {

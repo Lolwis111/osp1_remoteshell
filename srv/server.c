@@ -87,10 +87,6 @@ int main()
         /* fork into the shell so the server can accept more connections */
         if((child = fork()) == 0)
         {
-            /* copy the stderr stream before remapping it,
-             * to allow the server to make debug printouts */
-            int debug = dup(STDERR_FILENO);
-
             /* disable buffering */
             setbuf(stdout, NULL);
             setbuf(stderr, NULL);
@@ -100,7 +96,7 @@ int main()
             dup2(connectFD, STDERR_FILENO);
             
             /* execute the shell */
-            shell(connectFD, debug);
+            shell(connectFD);
 
             /* close the connection */
             shutdown(connectFD, SHUT_RDWR);
