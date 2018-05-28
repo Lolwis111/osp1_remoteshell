@@ -90,13 +90,14 @@ int main()
             /* copy the stderr stream before remapping it,
              * to allow the server to make debug printouts */
             int debug = dup(STDERR_FILENO);
-            /* map the socket onto the output streams */
-            dup2(connectFD, STDOUT_FILENO);
-            dup2(connectFD, STDERR_FILENO);
 
             /* disable buffering */
             setbuf(stdout, NULL);
             setbuf(stderr, NULL);
+            
+            /* map the socket onto the output streams */
+            dup2(connectFD, STDOUT_FILENO);
+            dup2(connectFD, STDERR_FILENO);
             
             /* execute the shell */
             shell(connectFD, debug);

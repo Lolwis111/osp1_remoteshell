@@ -14,7 +14,7 @@ off_t getFileSize(char* filename)
 bool recieveFile(char* filename, int socket)
 {
     /* read the filesize */
-    size_t length;
+    size_t length, ret;
     if(read(socket, &length, sizeof(size_t)) < 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
@@ -45,8 +45,8 @@ bool recieveFile(char* filename, int socket)
         }
 
         /* write a 512 byte segment */
-        fwrite(buffer, 512, 1, output);
-        if(ferror(output) != 0)
+        ret = fwrite(buffer, 512, 1, output);
+        if(ret != 1 || ferror(output) != 0)
         {
             fprintf(stderr, "%s\n", strerror(errno));
             return false;
@@ -61,8 +61,8 @@ bool recieveFile(char* filename, int socket)
     }
 
     /* write the rest block */
-    fwrite(buffer, rest, 1, output);
-    if(ferror(output) != 0)
+    ret = fwrite(buffer, rest, 1, output);
+    if(ret != 1 || ferror(output) != 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return false;
@@ -76,6 +76,7 @@ bool recieveFile(char* filename, int socket)
 
 bool sendFile(char* filename, int socket)
 {
+    size_t ret;
     off_t size = getFileSize(filename);
     if(size == -1)
     {
@@ -110,8 +111,8 @@ bool sendFile(char* filename, int socket)
     for(size_t i = 0; i < segments; i++)
     {
         /* read a 512 byte block */
-        fread(buffer, 512, 1, input);
-        if(ferror(input) != 0)
+        ret = fread(buffer, 512, 1, input);
+        if(ret != 1 || ferror(input) != 0)
         {
             fprintf(stderr, "%s\n", strerror(errno));
             return false;
@@ -126,8 +127,8 @@ bool sendFile(char* filename, int socket)
     }
 
     /* read the rest block */
-    fread(buffer, rest, 1, input);
-    if(ferror(input) != 0)
+    ret = fread(buffer, rest, 1, input);
+    if(ret != 1 || ferror(input) != 0)
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return false;

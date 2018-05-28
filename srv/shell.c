@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <stdbool.h>
+
 #include "shell.h"
 #include "file.h"
 
@@ -111,14 +112,10 @@ void waitForPIDs(pid_t* pids, size_t argc)
     {
         return;
     }
-
-    /* reset Ctrl+C */
-    // abortWait = false;
-
+    
     /* iterate through all the given pids until they all terminated */
     /* if the SIGINT handler registerd Ctrl+C we can return too */
     size_t i = 0;
-    // while(!abortWait)
     while(1)
     {
         /* -1 marks available slots, we dont have to wait on these */
@@ -444,6 +441,7 @@ bool parseProgram(program_t* params, char* programString)
 /* processes a command (detects pipes and programs/arguments) */
 bool parseCommand(char* commandStr, command_t *command)
 {
+    /* set the default values */
     command->background = false;
     command->count = 0;
     command->malloced = 2;
@@ -481,6 +479,7 @@ bool parseCommand(char* commandStr, command_t *command)
 
         command->count++;
 
+        /* allocate more memory if needed */
         if(command->count == command->malloced)
         {
             command->malloced += 2;
@@ -501,11 +500,6 @@ bool parseCommand(char* commandStr, command_t *command)
 
 int shell(int socket, int debugFD)
 {
-    /* install a new handler for Ctrl+C 
-       but also save the old handler 
-       for background children */
-    // handler = signal(SIGINT, ctrlCHandler);
-
     /* set all process ids to zero
        zero indicates that the slot is available */
     for(size_t i = 0; i < MAX_PROCESSES; i++)
@@ -518,6 +512,7 @@ int shell(int socket, int debugFD)
 
     while(1)
     {
+        /* get memory for the working directory */
         char *cwd = __malloc(char, PATH_LENGTH);
         if(NULL == cwd)
         {
@@ -544,7 +539,11 @@ int shell(int socket, int debugFD)
             return 0;
         }
 
-        write(debugFD, inputBuffer, strlen(inputBuffer));
+        /* print the recieved command to stderr for debug purposes */
+        if(write(debugFD, inputBuffer, strlen(inputBuffer)) < 0)
+        {
+            /* debug printout failure, what am i supposed to do know */
+        }
 
         /* delete the trailing newline character that fgets inserted */
         inputBuffer[strlen(inputBuffer) - 1] = 0x00;
@@ -582,6 +581,7 @@ int shell(int socket, int debugFD)
                 }
                 else
                 {
+                    /* recieve a file from the client with given name */
                     if(!recieveFile(command.programs[0].args[1], socket))
                     {
                         fputs("Error recieving file", stderr);
@@ -596,6 +596,7 @@ int shell(int socket, int debugFD)
                 }
                 else
                 {
+                    /* send a file to the client with given name */
                     if(!sendFile(command.programs[0].args[1], socket))
                     {
                         fputs("Error sending file", stderr);
@@ -604,6 +605,7 @@ int shell(int socket, int debugFD)
             }
             else if(0 == strcmp(command.programs[0].args[0], "echo"))
             {
+                /* echo for debug purposes */
                 if(command.programs[0].argc > 1)
                 {
                     printf("%s\n", command.programs[0].args[1]);

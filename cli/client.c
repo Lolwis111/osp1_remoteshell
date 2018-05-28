@@ -163,7 +163,13 @@ int main(int argc, char **argv)
         /* reset the buffer */
         memset(&buffer, 0, BUFFER_SIZE);
         /* read a command from the user */
-        fgets(buffer, BUFFER_SIZE, stdin);
+        if(NULL == fgets(buffer, BUFFER_SIZE, stdin))
+        {
+            fprintf(stderr, "%s\n", strerror(errno));
+            shutdown(socketFD, SHUT_RDWR);
+            close(socketFD);
+            exit(EXIT_FAILURE);
+        }
 
         /* send the buffer to the server */
         if(write(socketFD, buffer, strlen(buffer) + 1) < 0)
